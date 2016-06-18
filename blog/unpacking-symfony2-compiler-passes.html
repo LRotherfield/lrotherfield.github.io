@@ -1,0 +1,195 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Unpacking Symfony2 compiler passes</title>
+            <meta name="description" content="Unpacking how compiler passes work in Symfony2, how they enable us to manipulate service definitions and looking at some real world examples
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Unpacking Symfony2 compiler passes</h1>
+    <p>December 8th 2014</p>
+    <h2>Introduction</h2>
+<p>This is a three part article about compiler passes in Symfony2. In this article I will walk through what the compiler pass is, what we can do with it and, some real world examples of it being used. The second article will be a tutorial walking through an example of writing a compiler pass.  The third article will walk through unit testing the compiler pass as I have found unit testing fun, useful and complicated. Most of the information that I will present is my own understanding gained by working with Symfony2, if you want official documentation on the subject then try the following links (you should read these whether or not your read the rest of my article):</p>
+<ul>
+<li><a href="http://symfony.com/doc/current/components/dependency_injection/compilation.html#creating-a-compiler-pass"><a href="http://symfony.com/doc/current/components/dependency_injection/compilation.html#creating-a-compiler-pass">http://symfony.com/doc/current/components/dependency_injection/compilation.html#creating-a-compiler-pass</a></a></li>
+<li><a href="http://symfony.com/doc/current/cookbook/service_container/compiler_passes.html"><a href="http://symfony.com/doc/current/cookbook/service_container/compiler_passes.html">http://symfony.com/doc/current/cookbook/service_container/compiler_passes.html</a></a></li>
+<li><a href="http://symfony.com/doc/current/components/dependency_injection/tags.html"><a href="http://symfony.com/doc/current/components/dependency_injection/tags.html">http://symfony.com/doc/current/components/dependency_injection/tags.html</a></a></li>
+</ul>
+<h2>What is a compiler pass</h2>
+<p>A compiler pass is Symfony2's way of letting you interact with the service and parameter definitions defined in the global and bundle scope once they have been loaded but before they have been compiled into the optimised <a href="http://symfony.com/doc/current/components/dependency_injection/introduction.html">DIC</a>. In a simplified form the phase of events looks like:</p>
+<ol>
+<li>Every yaml/xml/php configuration file specified by the global config file (usually config_ENV.yml) is loaded into a configuration array</li>
+<li>Every yaml/xml/php configuration file specified by bundles in the system is loaded into the same array</li>
+<li>The array is passed to any compiler pass registered with the system which can then manipulate it in any way deemed fit by the developer (add, remove, update any service definition)</li>
+<li>The array is then compiled into a class called the dependency injection container which is a huge object full of methods for accessing all of the services defined throughout the application</li>
+</ol>
+<h2>Why is the compiler pass useful</h2>
+<p>The primary way that I have found compiler passes to be useful is the ability to update arguments passed to services. This is commonly done when <a href="http://symfony.com/doc/current/components/dependency_injection/tags.html">working with tagged services</a> so that a service can be passed all other services tagged for it as a single argument (array) without the developer writing a large list in the arguments definition. Other uses include:</p>
+<ul>
+<li>Creating new services that require information about other defined services before being defined</li>
+<li>Swapping or adding arguments to a service that you did not write</li>
+<li>Creating and modifying parameters in the container</li>
+</ul>
+<h2>Real world examples</h2>
+<p>Given the open source nature of it's code, Symfony2 becomes much easier to learn as there are so many examples available. We will look at two examples of a compiler pass being used, walk through the pass and how it works and then try and understand the merits of each pass.</p>
+<h3>The Symfony2 form registry</h3>
+<p>If you have ever made a custom for type in Symfony2, you may well have <a href="http://symfony.com/doc/current/cookbook/form/create_custom_field_type.html#creating-your-field-type-as-a-service">registered it as a form type</a> so that you can use it in other forms without manually instantiating the class. You can do this because the <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/Form/Extension/DependencyInjection/DependencyInjectionExtension.php">form &quot;registry&quot;</a> is constructed with your form type service <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/Form/Extension/DependencyInjection/DependencyInjectionExtension.php#L33">injected</a> (although I am showing code for the dependency injection extension, this service is <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/Form/FormRegistry.php#L80">passed to the actual form registry</a> so for simplification I am talking about the two services as one). This is done in a <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Bundle/FrameworkBundle/DependencyInjection/Compiler/FormPass.php">compiler pass</a>:</p>
+<pre><code>class FormPass implements CompilerPassInterface
+{
+    public function process(ContainerBuilder $container)
+    {
+        if (!$container-&gt;hasDefinition('form.extension')) {
+            return;
+        }
+        $definition = $container-&gt;getDefinition('form.extension');
+        // Builds an array with service IDs as keys and tag aliases as values
+        $types = array();
+        foreach ($container-&gt;findTaggedServiceIds('form.type') as $serviceId =&gt; $tag) {
+            $alias = isset($tag[0]['alias'])
+                ? $tag[0]['alias']
+                : $serviceId;
+            // Flip, because we want tag aliases (= type identifiers) as keys
+            $types[$alias] = $serviceId;
+        }
+        $definition-&gt;replaceArgument(1, $types);</code></pre>
+<p>Walking through what happens in the above:</p>
+<ol>
+<li>The container is checked to see if it has the registry by using the registry's <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Bundle/FrameworkBundle/Resources/config/form.xml#L44">service id</a> (if you declare services in yaml this is the top line of your definition, the name)</li>
+<li>If the definition exists then fetch it (A <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/DependencyInjection/Definition.php">definition is an object</a> populated with all of the information from the declaration)</li>
+<li>Loop over all of the service definitions tagged using the form.type tag (this returns the service id and the attributes from the tag, e.g alias, method)</li>
+<li>Get the alias attribute from the tag and add the service id to an array, identified (key) by it's alias</li>
+<li>Replace the <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Bundle/FrameworkBundle/Resources/config/form.xml#L44">second argument</a> in the form.extension service definition with the array of service id's (note that this is an array of id's not actual services, this is why the registry has the container injected so it can <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/Form/Extension/DependencyInjection/DependencyInjectionExtension.php#L44">fetch the services</a> as required)</li>
+</ol>
+<p>So as you can see, it is relatively simple to create a compiler pass to replace a definition's argument with something and to get tagged services.</p>
+<h4>Why is this better than hardcoding a list of services as the second argument for the form registry</h4>
+<p>The primary way that I see this as a better implementation than simply hard coding the arguments is maintainability. What I mean by that is two fold:</p>
+<ol>
+<li>Every time a new form type is added to the core form package, the service definition for the form registry does not have to be updated</li>
+<li>3rd party modules with form types can register them with the registry without having to modify the core service definition (please do not modify core files)</li>
+</ol>
+<p>There are other advantages too, such as being able to unit test the logic, but I don't think we require additional advantages to choose to implement it this way. The above two examples show that the alternative implementation is very limited, manual and makes external developers jobs much harder.</p>
+<h3>norzechowicz/aceeditor-bundle</h3>
+<p>For those of you who have not used <a href="http://ace.c9.io/">ace editor</a> it is a nifty, open source, javascript web editor that works really well and has many useful features. It is essentially a low feature, web based IDE. Norbert Orzechowicz has written <a href="https://github.com/norzechowicz/aceeditor-bundle">a bundle</a> that adds a form type allowing users to utilise ace editor in Symfony2 projects. One of the complications that Norbert had to overcome was adding a file to the <a href="http://symfony.com/doc/current/cookbook/form/form_customization.html#twig">list of form themes</a> so that he can add additional markup to the rendering of the ace editor form type. He could have taken the easy way out and required users to add the form theme manually to app/config/config.yml. Instead we wrote a <a href="https://github.com/norzechowicz/aceeditor-bundle/blob/master/DependencyInjection/Compiler/TwigFormPass.php">compiler pass</a>:</p>
+<pre><code>class TwigFormPass implements CompilerPassInterface
+{
+    public function process(ContainerBuilder $container)
+    {
+        if (!$container-&gt;hasParameter('twig.form.resources')) {
+            return;
+        }
+        $container-&gt;setParameter('twig.form.resources', array_merge(
+            array('NorzechowiczAceEditorBundle:Form:div_layout.html.twig'),
+            $container-&gt;getParameter('twig.form.resources')
+        ));
+    }
+}</code></pre>
+<p>Walking through what happens above:</p>
+<ol>
+<li>As with the form registry, the container is checked for the existence of the required definition (this time it is a parameter not a service)</li>
+<li>If the parameter exists, the value is accessed and the new form theme template is added to the value before reassigning the new combination value to the parameter</li>
+</ol>
+<p>So a parameter defined in config.yml has been manipulated to contain additional elements in it's array.</p>
+<h4>Why is this better than requiring the developer to register the form theme manually</h4>
+<p>Admittedly it would not be much work for a developer to make one modification to config.yml when they install this bundle, however in my opinion it is nice not to have to as it makes the installation easier. The biggest advantage I can see however is, when a developer writes a bundle that requires the norzechowicz/aceeditor-bundle. Now in their documentation for installation the developer will have to include installation instructions for norzechowicz/aceeditor-bundle too, as it is a pre-requisite to make their bundle work. This chain of dependencies could get longer and so the installation process (and documentation) gets more complicated. So with that in mind it seems like a good development decision not to require other developers to have to add code to install your module if your module can do it programatically using the tools Symfony2 provides. Hopefully the above has all made sense, look out for the next article in this series as it will be a tutorial on writing a compiler pass based on a use case I had for a recent project. <em><strong>Update</strong>: Part 2 of this series is now published, you can <a href="http://lrotherfield.com/blog/symfony2-tutorial-writing-compiler-pass/" title="Symfony2 Tutorial: Writing a compiler pass">read it here</a></em></p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/unpacking-symfony2-compiler-passes';
+     this.page.identifier = '1271 http:\/\/lrotherfield.com\/?p=1271';
+     this.page.title = 'Unpacking Symfony2 compiler passes';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

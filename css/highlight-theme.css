@@ -1,0 +1,41 @@
+/* Tomorrow Night Eighties Theme */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+.tomorrow-comment, pre .php .hljs-meta {
+    color: #999999;
+}
+
+.tomorrow-red, pre .php .hljs-function{
+    color: #f2777a;
+}
+
+.tomorrow-orange, pre .php .hljs-keyword {
+    color: #f99157;
+}
+
+.tomorrow-yellow, pre .php .hljs-string {
+    color: #ffcc66;
+}
+
+.tomorrow-green, pre .hljs-class{
+    color: #99cc99;
+}
+
+.tomorrow-aqua, pre .php .hljs-comment {
+    color: #66cccc;
+}
+
+.tomorrow-blue, pre .hljs-doctag{
+    color: #6699cc;
+    font-weight: bold;
+}
+
+pre code {
+    display: block;
+    background: #2d2d2d;
+    color: #cccccc;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    line-height: 1.5;
+    border: 1px solid #ccc;
+    padding: 10px;
+}

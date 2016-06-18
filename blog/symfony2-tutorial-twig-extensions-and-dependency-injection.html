@@ -1,0 +1,358 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2 tutorial: Twig extensions and dependency injection</title>
+            <meta name="description" content="This is part 2 of the Symfony2 tutorial making a flash notification bundle to learn the basics of services, dependency injection and twig extensions
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2 tutorial: Twig extensions and dependency injection</h1>
+    <p>March 13th 2013</p>
+    <p>This tutorial is the concluding part of a mini series on Symfony2, specifically: Dependency injection, services and twig extensions. In the previous tutorial we created a service that allows developers to add, check and get flash notification messages. This part of the tutorial will cover writing a twig extension to print out notifications, some js and css being included with assetic, and setting up default bundle configuration with the config class and dependency injection. If you have not followed part 1 of the Symfony2 tutorial, you can find it here: <a href="http://lrotherfield.com/blog/symfony2-tutorial-creating-and-using-a-service/"><a href="http://lrotherfield.com/blog/symfony2-tutorial-creating-and-using-a-service/">http://lrotherfield.com/blog/symfony2-tutorial-creating-and-using-a-service/</a></a></p>
+<h2>Twig extension</h2>
+<p>Rather than get the notifications in the controller and pass them through to every template to render them out, we want to offer developers a simple set of twig functions to do it all for them. To do this we need to create a twig extension. Make a new folder in you bundle called “Twig”. Inside this folder create a new PHP file called “NotificationExtension”:</p>
+<pre><code>&lt;?php
+
+namespace LRotherfield\Bundle\NotificationBundle\Twig;
+
+class NotificationExtension extends \Twig_Extension
+{
+
+    public function getName()
+    {
+        return 'lrotherfield_notification_extension';
+    }
+
+}</code></pre>
+<p>As you can see above, we have extended the Twig_Extension class that implements the Twig_ExtensionInterface for us. You can implement the Twig_ExtensionInterface instead but there is no point as you would just have to create the same methods implemented in Twig_Extension. Now that we have a class, we need to load it as a service and tag it as a twig extension. This is done in the services.yml:</p>
+<pre><code>services:
+#...
+  lrotherfield.twig.message_extension:
+    class: LRotherfield\Bundle\NotificationBundle\Twig\NotificationExtension
+    arguments: [@service_container]
+    tags:
+      - { name: twig.extension }</code></pre>
+<p>There are a couple of things to note from above:</p>
+<h3>One</h3>
+<p>We have passed through one argument above, the entire service_container. It is actually better practice, when you can, to pass through only the services you need which for us will be templating and lrotherfield.notify and look like this:</p>
+<pre><code>arguments: [@templating, @lrotherfield.notify]</code></pre>
+<p>Because we have set lrotherfield.notify up as a service, we can now pass it through to other services. <em><strong>Unfortunately</strong></em> doing this is <em><strong>not</strong></em> possible with the templating service as it creates a ServiceCircularReferenceException and has been <a href="https://github.com/symfony/symfony/issues/2347">suggested by Fabpot himself</a> that we just inject the whole container.</p>
+<h3>Two</h3>
+<p>The second thing to note is the <a href="http://symfony.com/doc/2.0/components/dependency_injection/tags.html">tags argument</a>, we have tagged our service as a twig.extension. Tags are a way of grouping services so that other classes can request all services by a specific tag.</p>
+<h2>Create the render methods</h2>
+<p>Our twig extension is now getting loaded so we can create a couple of render methods to be called from any twig template. Initially we need to deal with the service container that is passed through to our __construct() method. We want two services, templating and lrotherfield.notify so we will set them up as individual class variables (due to the templating circular reference issue, we cannot get the templating service in the construct method):</p>
+<pre><code>//NotificationExtension.php
+//...
+use Symfony\Component\DependencyInjection\ContainerInterface;
+
+class NotificationExtension extends \Twig_Extension
+{
+    protected $container, $notify;
+
+    public function __construct(ContainerInterface $container = null)
+    {
+        $this-&gt;container = $container;
+        $this-&gt;notify = $container-&gt;get("lrotherfield.notify");
+    }</code></pre>
+<p>Notice above that we are using <a href="http://php.net/manual/en/language.oop5.typehinting.php">type hinting</a> to ensure an object that implements ContainerInterface is passed through. To do this we have added a use statement at the top of our class file under the namespace. Now we have our two services we can create our two render functions, one to render specific notifications and one to render all notifications:</p>
+<pre><code>//NotificationExtension.php
+//...
+
+    public function renderAll($container = false)
+    {
+        $notifications_array = $this-&gt;notify-&gt;all();
+
+        if (count($notifications_array) &gt; 0) {
+            return $this-&gt;container-&gt;get('templating')
+                -&gt;render(
+                    "LRotherfieldNotificationBundle:Notification:multiple.html.twig",
+                    compact("notifications_array", "container")
+                );
+        }
+
+        return null;
+    }
+
+    public function renderOne($name, $container = false)
+    {
+        if (!$this-&gt;notify-&gt;has($name)) {
+            return false;
+        }
+        $notifications = $this-&gt;notify-&gt;get($name);
+
+        if (count($notifications) &gt; 0) {
+            return $this-&gt;container-&gt;get('templating')
+                -&gt;render(
+                    "LRotherfieldNotificationBundle:Notification:single.html.twig",
+                    compact("notifications", "container")
+                );
+        }
+
+        return null;
+    }</code></pre>
+<p>Currently we are using the templating service to render two view twig files, we will create them later in the tutorial. $container (referenced right at the bottom of this tutorial) will be used in the templates when we get to making them and has no relation to the service container. If you have not come across the <a href="http://php.net/manual/en/function.compact.php">compact function</a> before, it creates a key value array using strings to find variables set in your code.</p>
+<h2>Register the twig functions</h2>
+<p>Before we can call functions from our class in a twig template we need to register them as twig functions. Twig extensions can register two types of methods, <a href="http://twig.sensiolabs.org/doc/advanced.html#id2">filters and functions</a>. In our case we want to register our methods as functions as we are not looking to manipulate a string like a filter does but render additional view files instead. The method we need to implement is getFunctions() and it needs to return an array of \Twig_function_Method instances:</p>
+<pre><code>//NotificationExtension.php
+//...
+    public function getFunctions()
+    {
+        return array(
+            'notify_all' =&gt; new \Twig_Function_Method($this, 'renderAll', array('is_safe' =&gt; array('html'))),
+            'notify_one' =&gt; new \Twig_Function_Method($this, 'renderOne', array('is_safe' =&gt; array('html')))
+        );
+    }</code></pre>
+<p>Above we have registered two twig functions:</p>
+<pre><code>{{ notify_all() }} will call NotificationExtension-&gt;renderAll()
+{{ notify_one(name) }} will call NotificationExtension-&gt;renderOne($name)</code></pre>
+<p>We have also added an array argument <span class="lang:default decode:true  crayon-inline ">array('is_safe' =&gt; array('html'))</span>  which tells twig that the returned value of the function is safe and does not need to be cleaned/escaped.</p>
+<h2>Include the javaScript and CSS files</h2>
+<p>So that we have nice messages flash notifications rendered to the user, we need a simple js notification library. <a href="http://wavded.github.com/humane-js/">humane.js</a> suits just fine especially as we don’t need to include jQuery to use it. The simplest method to include humane.js is to create a new twig function that will render both files as script and link tags, this method can then be called in the head of the document. First we need to create a few new directories, Resources/public, Resources/public/css and Resources/public/js. Inside the js and css directories we can then add the corresponding resources. You can get a copy of the minified or regular humane.js here <a href="https://github.com/wavded/humane-js"><a href="https://github.com/wavded/humane-js">https://github.com/wavded/humane-js</a></a>, save it as Resources/public/js/humane.js. I have stripped down the css so that it has no colours etc and you can use the stripped down version or use a version from the <a href="https://github.com/wavded/humane-js">humane.js git repository</a>:</p>
+<pre><code>/* Resources/public/css/humane.css */
+.humane{position:relative;-moz-transition:all .6s ease-in-out;-webkit-transition:all .6s ease-in-out;-ms-transition:all .6s ease-in-out;-o-transition:all .6s ease-in-out;transition:all .6s ease-in-out;z-index:100000;filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=100);}
+.humane{font-family:Helvetica Neue, Helvetica, sans-serif;font-size:18px;opacity:0;color:#333;padding:10px;text-align:center;-moz-transform:translateY(-100px);-webkit-transform:translateY(-100px);-ms-transform:translateY(-100px);-o-transform:translateY(-100px);transform:translateY(-100px);}
+.humane p,.humane ul{margin:0;padding:0;}
+.humane ul{list-style:none;}
+.humane-animate{opacity:1;-moz-transform:translateY(0);-webkit-transform:translateY(0);-ms-transform:translateY(0);-o-transform:translateY(0);transform:translateY(0);}
+.humane-animate:hover{opacity:0.7;}
+.humane-js-animate{opacity:1;-moz-transform:translateY(0);-webkit-transform:translateY(0);-ms-transform:translateY(0);-o-transform:translateY(0);transform:translateY(0);}
+.humane-js-animate:hover{opacity:0.7;filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=70);}</code></pre>
+<p>Now that we have the resources, we need a twig function and a view file to include them:</p>
+<h3>Twig function</h3>
+<pre><code>public function renderResources()
+{
+    return $this-&gt;container-&gt;get('templating')
+        -&gt;render("LRotherfieldNotificationBundle:Notification:resources.html.twig");
+}</code></pre>
+<p>Remember we need to register this function with twig so add another line to the getFunctions() returned array:</p>
+<pre><code>'notify_resources' =&gt; new \Twig_Function_Method($this, 'renderResources', array('is_safe' =&gt; array('html')))</code></pre>
+<h3>Twig template</h3>
+<p>In the above function we are trying to render &quot;LRotherfieldNotificationBundle:Notification:resources.html.twig&quot;. To make this view we need a new directory Resources/views/Notification. In this directory we can create our view file and include our resource files:</p>
+<pre><code>{# Resource/views/Notification/resources.html.twig #}
+{% stylesheets '@LRotherfieldNotificationBundle/Resources/public/css/*' %}
+    &lt;link rel="stylesheet" type="text/css" href="{{ asset_url }}" /&gt;
+{% endstylesheets %}
+
+{% javascripts '@LRotherfieldNotificationBundle/Resources/public/js/*' %}
+    &lt;script type="text/javascript" src="{{ asset_url }}"&gt;&lt;/script&gt;
+{% endjavascripts %}</code></pre>
+<p>Here we are using <a href="http://symfony.com/doc/2.1/cookbook/assetic/asset_management.html">assetic</a> to load all of the files in our js and css directories and render them as one file of each type. To use assetic like this we actually need to add a line into our config.yml file:</p>
+<pre><code>#config.yml
+#...
+assetic:
+  #...
+  bundles: [LRotherfieldNotificationBundle]</code></pre>
+<h2>Multiple and single notification twig templates</h2>
+<p>As mentioned earlier, we need two view files to render the output of notify_all() and notify_one(). These views need to loop through the array of notifications passed to them and create humane.js notifications for each one. The files need to be created in Resources/views/Notification:</p>
+<pre><code>{# multiple.html.twig #}
+&lt;script type="text/javascript"&gt;
+    var notify = humane.create({container: {{ (container ? "document.getElementById('"~container~"')" : "false") | raw }}});
+    {% for notifications in notifications_array %}
+        {% for notification in notifications %}
+                notify.log("{{ (notification.title == "" ? "" : "&lt;h2&gt;"~notification.title~"&lt;/h2&gt;") | raw }}{{ (notification.message == "" ? "" : "&lt;p&gt;"~notification.message~"&lt;/p&gt;") | raw }}", { timeout: {{ notification.lifetime }}, clickToClose: {{ notification.click_to_close ? "true" : "false" }}, addnCls: "{{ notification.class }}"});
+        {% endfor %}
+    {% endfor %}
+&lt;/script&gt;</code></pre>
+<pre><code>{# single.html.twig #}
+&lt;script type="text/javascript"&gt;
+    var notify = humane.create({container: {{ (container ? "document.getElementById('"~container~"')" : "false") | raw }}});
+    {% for notification in notifications %}
+        notify.log("{{ (notification.title == "" ? "" : "&lt;h2&gt;"~notification.title~"&lt;/h2&gt;") | raw }}{{ (notification.message == "" ? "" : "&lt;p&gt;"~notification.message~"&lt;/p&gt;") | raw }}", { timeout: {{ notification.lifetime }}, clickToClose: {{ notification.click_to_close ? "true" : "false" }}, addnCls: "{{ notification.class }}"});
+    {% endfor %}
+&lt;/script&gt;</code></pre>
+<h2>Dependency injection configuration for some defaults</h2>
+<p>You probably noticed above that we used lots of keys (like notifiaction.click_to_close etc) that currently do not exist. We could require the developer to pass all of them each time they add a notification in the arguments array. This would work, but its not a nice solution especially as quite often many of the values will not change. The other solution is to create some default values and inject them into our service. We can do this using the DependencyInjection/<a href="http://symfony.com/doc/2.1/cookbook/bundles/extension.html#validation-and-merging-with-a-configuration-class">Configuration class</a> by <a href="http://symfony.com/doc/2.1/components/config/definition.html#adding-node-definitions-to-the-tree">adding nodes to the treebuilder</a> instance that was created when we generated our bundle:</p>
+<pre><code>//Configuration.php
+//...
+    public function getConfigTreeBuilder()
+    {
+        $treeBuilder = new TreeBuilder();
+        $rootNode = $treeBuilder-&gt;root('l_rotherfield_notification');
+
+        $rootNode-&gt;children()
+            -&gt;scalarNode("message")-&gt;defaultValue("")-&gt;end()
+            -&gt;scalarNode("title")-&gt;defaultValue("")-&gt;end()
+            -&gt;scalarNode("class")-&gt;defaultValue("notice")-&gt;end()
+            -&gt;scalarNode("type")-&gt;defaultValue("flash")-&gt;end()
+            -&gt;scalarNode("lifetime")-&gt;defaultValue(6000)-&gt;end()
+            -&gt;booleanNode("click_to_close")-&gt;defaultFalse()-&gt;end()
+            -&gt;end();
+
+        return $treeBuilder;
+    }</code></pre>
+<p>Above we have added lots of <a href="http://symfony.com/doc/2.1/components/config/definition.html#node-type">scalarNodes</a> with default values and one <a href="http://symfony.com/doc/2.1/components/config/definition.html#node-type">booleanNode</a>. These values can be overwritten by developers in their config.yml files like so:</p>
+<pre><code>#config.yml
+#...
+l_rotherfield_notification:
+  click_to_close: true
+  lifetime: 5000 #add any of the nodes needed, not just these two</code></pre>
+<p>We can now use these values in DependencyInjection/LRotherfieldNotificationExtension to set them as parameters which can then be used in our services.yml file to inject them into our lrotherfield.notify service:</p>
+<pre><code>//LRotherfieldNotificationExtension
+//...
+    public function load(array $configs, ContainerBuilder $container)
+    {
+        $configuration = new Configuration();
+        $config = $this-&gt;processConfiguration($configuration, $configs);
+
+        $container-&gt;setParameter("lrotherfield.notify.message", $config["message"]);
+        $container-&gt;setParameter("lrotherfield.notify.title", $config["title"]);
+        $container-&gt;setParameter("lrotherfield.notify.class", $config["class"]);
+        $container-&gt;setParameter("lrotherfield.notify.type", $config["type"]);
+        $container-&gt;setParameter("lrotherfield.notify.lifetime", $config["lifetime"]);
+        $container-&gt;setParameter("lrotherfield.notify.click_to_close", $config["click_to_close"]);
+
+        $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader-&gt;load('services.yml');
+    }</code></pre>
+<p>The above code creates a new instance of our Configuration class and then processes the TreeBuilder object and returns an array of our nodes. We have then used the array to set parameters in the container. Now we just inject them in our services.yml file:</p>
+<pre><code>#services.yml
+#...
+lrotherfield.notify:
+  class: "%lrotherfield.notification.class%"
+  arguments:
+  session: @session
+  defaults:
+    message: %lrotherfield.notify.message%
+    title: %lrotherfield.notify.title%
+    class: %lrotherfield.notify.class%
+    type: %lrotherfield.notify.type%
+    lifetime: %lrotherfield.notify.lifetime%
+    click_to_close: %lrotherfield.notify.click_to_close%</code></pre>
+<h2>Finally</h2>
+<p>Lets use these defaults in our NotificationController:</p>
+<pre><code>//NotificationController
+//...
+    private $defaults = array(),
+        $flashes = array(),
+        $session;
+
+   /**
+    * @param \Symfony\Component\HttpFoundation\Session\Session $session
+    * @param array $defaults
+    */
+    public function __construct(\Symfony\Component\HttpFoundation\Session\Session $session, array $defaults)
+    {
+        $this-&gt;session = $session;
+        $this-&gt;defaults = $defaults;
+    }</code></pre>
+<p>So now, rather than just the default type, we have all of our defaults that can be overwritten in config.yml or by passing them in the arguments array.</p>
+<h2>Lets test it</h2>
+<p>Using the default index.html.twig template, we want to extend the base.html.twig template (assuming the base template is where you mark up the basic HTML structure like html, head and body tags):</p>
+<pre><code>{# Default/index.html.twig #}
+{# remove the old test loop #}
+{% extends “::base.html.twig” %}</code></pre>
+<p>Then in base.html.twig we can render the resources and the notifications:</p>
+<pre><code>{# base.html.twig #}
+{# ... #}
+  {{ notify_resources() }}
+  &lt;/head&gt;
+  {# ... #}
+  &lt;div id=”notify_container”&gt;&lt;/div&gt;
+  {# ... #}
+  {{ notify_all(“notify_container”) }}
+  &lt;/body&gt;</code></pre>
+<p>Notice above, although we could have used notify_all() with no arguments, we have passed through “notify_container”. This makes use of the container variable we set up ages ago to render the notifications inside the element with the id <code>notify_container</code> which adds a nice final level of customisability to our bundle. If you get any errors, it is worth clearing your cache and trying again:</p>
+<pre><code>app/console cache:clear</code></pre>
+<p>Thanks for reading, I hope this 2 part series helped with your understanding of Symfony2, particularly Dependency Injection and services in Symfony2. If you notice any bugs in the above, please let me know using the comment form below. I have read and re-read both articles but its over 3600 words so at least one mistake is likely :S</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-tutorial-twig-extensions-and-dependency-injection';
+     this.page.identifier = '428 http:\/\/lrotherfield.com\/?p=428';
+     this.page.title = 'Symfony2 tutorial: Twig extensions and dependency injection';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

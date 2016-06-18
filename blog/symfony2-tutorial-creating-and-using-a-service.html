@@ -1,0 +1,340 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2 Tutorial - Creating and using a service</title>
+            <meta name="description" content="Easy to follow Symfony2 tutorial walking through creating a service and using it in a Symfony2 application
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2 Tutorial - Creating and using a service</h1>
+    <p>April 23rd 2013</p>
+    <h1>Creating and using a service</h1>
+<p>This 2 part Symfony2 tutorial series will cover 3 main topics; Dependency Injection, Services and Twig Extensions. We are going to develop a simple flash notification bundle that builds on the Symfony2 session components flashBag and allows developers to create flash (or instant) messages that will be rendered as javascript flash notifications. This part of the tutorial will specifically cover creating and using a service in the Symfony2 framework.</p>
+<p><em>To follow this tutorial you will need a Symfony2 project installed, you can follow <a href="http://symfony.com/doc/current/book/installation.html" title="Symfony2 installation documentation">the documentation</a> if you are not sure how.</em></p>
+<h2>Create a new bundle</h2>
+<p>To start we need a new bundle, the simplest way to do this is to use the command line generator. Run the following command and then answer the questions when prompted.</p>
+<pre><code>php app/console generate:bundle \--namespace=LRotherfield/Bundle/NotificationBundle \--bundle-name=LRotherfieldNotificationBundle
+</code></pre>
+<pre><code>Target directory [/Users/luke/Sites/tutorial/src]:
+
+Configuration format (yml, xml, php, or annotation): annotation
+
+Do you want to generate the whole directory structure [no]? no
+
+Do you confirm generation [yes]? yes
+
+Confirm automatic update of your Kernel [yes]? yes
+
+Confirm automatic update of the Routing [yes]? yes
+</code></pre>
+<p><em>Our bundle is called <code>LRotherfieldNotificationBundle</code> and has the namespace  <code>LRotherfieldBundleNotificationBundle</code>. You can call yours what you want, just remember to substitute the correct namespace in the rest of the tutorial.</em></p>
+<h2>Create new controller</h2>
+<p>Our notification service needs somewhere for the code to exist. We could use the DefaultController.php file but we will save that for testing our bundle and instead create a new file (with a more meaningful name) called NotificationController.php in the Controller directory:</p>
+<pre><code>&lt;?php
+namespace LRotherfieldBundleNotificationBundleController;
+
+class NotificationController
+{
+
+}
+</code></pre>
+<p>All of the logic for adding and modifying flash notifications will happen in this controller.</p>
+<h2>Register the controller as a service</h2>
+<p>In order to use our controller from the <a href="http://symfony.com/doc/2.0/book/service_container.html" title="Symfony2 service container documentation">service container</a>, we need to register it as a service. This is done locally in the bundle in the <code>Resources/config/services.yml</code>.</p>
+<p>You will have a <code>services.xml</code> file currently, I prefer Yaml notation so we will change this first. Delete <code>services.xml</code> and make a new file <code>services.yml</code> in its place. We then need to make sure that our Yaml file is loaded. Open <code>DependencyInjection/LRotherfieldNotificationExtension.php</code>. We need to replace lines 25 and 26 with a <code>YamlFileLoader</code> instance and load our Yaml file:</p>
+<pre><code>$loader = new LoaderYamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+$loader-&amp;gt;load('services.yml');
+</code></pre>
+<p>We can now use our <code>services.yml</code> file to register our <code>NotificationController</code>:</p>
+<pre><code>parameters:
+    lrotherfield.notification.class: LRotherfieldBundleNotificationBundleControllerNotificationController
+
+services:
+    lrotherfield.notify:
+        class: "%lrotherfield.notification.class%"</code></pre>
+<p>Above we first set up a parameter  <code>lrotherfield.notification.class</code> for our controllers namespace. We have then registered a service called  <code>lrotherfield.notify</code> which gets an instance of our controller using the class namespace parameter. The % symbols wrapping the parameter name mean Symfony is looking for a parameter value rather than interpreting the value as a string. We do not need to add the class namespace as a parameter but the <a href="http://symfony.com/doc/2.0/book/service_container.html#service-parameters" title="Symfony2 service parameter documentation">Symfony2 documentation</a> makes the following arguments for doing so:</p>
+<ul>
+<li>separation and organization of all service &quot;options&quot; under a single parameters key;</li>
+<li>parameter values can be used in multiple service definitions;</li>
+<li>when creating a service in a bundle (this follows shortly), using parameters allows the service to be easily customized in your application.</li>
+</ul>
+<p>Now we can access our service from the service container anywhere in our Symfony2 project:</p>
+<pre><code>$container-&amp;gt;get("lrotherfield.notify")-&amp;gt;someMethodCall();
+//We currently have not set up any methods to call in our controller class</code></pre>
+<h2>Create the add method</h2>
+<p>The most important part of our service from the controllers point of view is going to be the  add()  method. This method needs to allow developers to add new flash or instant notifications to some kind of storage to be rendered in the views. Because Symfony2 already has the flashBag (a <a href="http://api.symfony.com/2.0/Symfony/Component/HttpFoundation/ParameterBag.html">paramaterBag</a> in the session that has a lifetime of one page reload) we are going to use it to store flash notifications. We will store instant notifications (no extra lifetime, removed after the class destructs) in a class variable:</p>
+<pre><code>//NotificationController.php
+    private $defaults
+        = array(
+            "type" =&amp;gt; "flash",
+        ),
+        $flashes = array();
+
+   /**
+    * Depending on the supplied type argument, add the values
+    * to the session flashBag or $this-&amp;gt;flashes
+    *
+    * @param string $name
+    * @param array $arguments
+    */
+
+    public function add($name, array $arguments = array())
+    {
+        $arguments += $this-&amp;gt;defaults;
+        // If the type is flash then add the values to the session flashBag
+        if ($arguments["type"] === "flash") {
+            $this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;add($name, $arguments);
+        }
+        // Otherwise if its instant then add them to the class variable $flashes
+        elseif ($arguments["type"] === "instant") {
+            // We want to be able to have multiple notifications of the same name i.e "success"
+            // so we need to add each new set of arguments into an array not overwrite the last
+            // "success" value set
+            if (!isset($this-&amp;gt;flashes[$name])) {
+                $this-&amp;gt;flashes[$name] = array();
+            }
+            $this-&amp;gt;flashes[$name][] = $arguments;
+        }
+    }</code></pre>
+<h2>Injecting the session component</h2>
+<p>You may have noticed in the above code that we have used $this-&gt;session to get the session service. This will throw an error currently as we have not defined a class variable $session and we have not made it an instance on the Symfony2 session component.</p>
+<p>What we need to do is inject the session service into our NotificationController class. We can do this very simply by defining the required arguments passed to our controller on instantiation in our services.yml class:</p>
+<pre><code>#services.yml
+#...
+services:
+    lrotherfield.notify:
+        class: "%lrotherfield.notification.class%"
+        arguments:
+            session: @session</code></pre>
+<p>Now when our NotificationController class is instantiated the session service is passed a variable to the construct method. Using the &quot;@&quot; notation means Symfony will search for services named &quot;session&quot; rather than just pass &quot;session&quot; as a string.</p>
+<p>We need to also define the magic  __construct()  method in our controller so that we can set up our session class variable to be the session instance that is being injected. Using type casting we can make sure that the variable passed is an instance of the session component and nothing else:</p>
+<pre><code>//NotificationController.php
+    private $defaults
+        = array(
+            "type" =&amp;gt; "flash",
+        ),
+        $flashes = array(),
+        $session;
+
+   /**
+    * @param SymfonyComponentHttpFoundationSessionSession $session
+    */
+
+    public function __construct(SymfonyComponentHttpFoundationSessionSession $session)
+    {
+        $this-&amp;gt;session = $session;
+    }</code></pre>
+<h2>Has, get and all methods</h2>
+<p>For developers to be able to access notifications they have added, we need to write some additional methods in our controller. There are some standard methods that Symfony2 suggests writing for classes such as ours. We are going to implement the following 3;</p>
+<ol>
+<li>Has: The has method will allow developers to check if a specific notification (i.e &quot;success&quot;) exists and will return a boolean value.</li>
+<li>Get: The get method will return a specific notification</li>
+<li>All: The all method will return all notification that currently exist</li>
+</ol>
+<pre><code>
+//NotificationController.php
+//...
+   /**
+    * Check the flashBag and $this-&amp;gt;flashes for existence of $name
+    *
+    * @param $name
+    *
+    * @return bool
+    */
+    public function has($name)
+    {
+        if($this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;has($name)){
+            return true;
+        } else {
+            return isset($this-&amp;gt;flashes[$name]);
+        }
+    }
+
+   /**
+    * Search for a specific notification and return matches from flashBag and $this-&amp;gt;flashes
+    *
+    * @param $name
+    *
+    * @return array
+    */
+    public function get($name)
+    {
+        if($this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;has($name) &amp;amp;&amp;amp; isset($this-&amp;gt;flashes[$name])){
+            return array_merge_recursive($this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;get($name), $this-&amp;gt;flashes[$name]);
+        } elseif($this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;has($name)) {
+            return $this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;get($name);
+        } else {
+            return $this-&amp;gt;flashes[$name];
+        }
+    }
+
+   /**
+    * Merge all flashBag and $this-&amp;gt;flashes values and return the array
+    *
+    * @return array
+    */
+    public function all()
+    {
+        return array_merge_recursive($this-&amp;gt;session-&amp;gt;getFlashBag()-&amp;gt;all(), $this-&amp;gt;flashes);
+    }
+</code></pre>
+<h2>Testing our progress</h2>
+<p>Now that our service has the functionality to add, check and get notifications, we are at the end of the first part of this 2 part Symfony2 tutorial. Before moving onto the next section, we should test the current methods. We will run the test using the default controller, indexAction method, and index view that were created with the bundle:</p>
+<p>First request an instance of our service:</p>
+<pre><code>$notify = $this-&amp;gt;get("lrotherfield.notify");
+</code></pre>
+<p>Add a test notification:</p>
+<pre><code>$notify-&amp;gt;add("test", array("type" =&amp;gt; "instant", "message" =&amp;gt; "This is awesome"));
+</code></pre>
+<p>Check for the test notification and return it:</p>
+<pre><code>if ($notify-&amp;gt;has("test")) {
+
+    return array("notifications" =&amp;gt; $notify-&amp;gt;get("test"));
+
+}
+</code></pre>
+<p>With all of the above elements we now have a method that looks like:</p>
+<pre><code>   /**
+
+    * @Route("/testing/notifications")
+
+    * @Template()
+
+    */
+
+    public function indexAction()
+
+    {
+
+        $notify = $this-&amp;gt;get("lrotherfield.notify");
+
+        $notify-&amp;gt;add("test", array("type" =&amp;gt; "instant", "message" =&amp;gt; "This is awesome"));
+
+        if ($notify-&amp;gt;has("test")) {
+
+            return array("notifications" =&amp;gt; $notify-&amp;gt;get("test"));
+
+        }
+
+        return array();
+
+    }
+</code></pre>
+<p><em>Please note that the @Route annotation has been changed from the default value to match /testing/notifications instead.</em></p>
+<p>Finally in the index.html.twig view file we need to loop through the notifications array and print the message value:</p>
+<pre><code>{% if notifications is defined %}
+
+    {% for notification in notifications %}
+
+        {{ notification.message }}
+
+    {% endfor %}
+
+{% endif %}
+</code></pre>
+<p>If you have your site set up locally you can now visit <a href="http://yoursite.dev/app_dev.php/testing/notifications">http://yoursite.dev/app_dev.php/testing/notifications</a> and you should see &quot;This is awesome&quot; echoed on the page.</p>
+<h2>Next time</h2>
+<p>The <a href="http://lrotherfield.com/blog/symfony2-tutorial-twig-extensions-and-dependency-injection/">next tutorial</a> will cover writing a twig extension to print out notifications, some css being included with assetic, and setting up default bundle configuration with the config class and dependency injection.</p>
+<p>Thank you for reading and I hope the tutorial helped get an understanding of the basics of setting up a service. If you have any feedback, please use the comment form below.</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-tutorial-creating-and-using-a-service';
+     this.page.identifier = '419 http:\/\/lrotherfield.com\/?p=419';
+     this.page.title = 'Symfony2 Tutorial: Writing a service';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

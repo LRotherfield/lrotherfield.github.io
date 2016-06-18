@@ -1,0 +1,147 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2: Get the templating service in a twig extension</title>
+            <meta name="description" content="Get the twig environment in a twig extension without injecting the whole container. Render twig templates from a twig extension correctly
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2: Get the templating service in a twig extension</h1>
+    <p>November 18th 2014</p>
+    <p>A while ago I wrote <a href="http://lrotherfield.com/blog/symfony2-tutorial-twig-extensions-and-dependency-injection/" title="Symfony2 tutorial: Twig extensions and dependency injection">a tutorial on how to write a twig extension</a>.  One of the issues I had, which was also noted in the comments, was I had to inject the whole container into my extension in order to get the templating service.  I could not figure out a solution to getting the templating service in another way and Symfony’s suggested fix for circular references, according to the exception, is to just inject the container.</p>
+<h2>Solution</h2>
+<p>There is however a solution, twig functions and filters can be flagged as requiring the current twig environment by using the <a href="http://twig.sensiolabs.org/doc/advanced.html#environment-aware-filters">needs_environment</a> flag.  The twig environment is the class required to render twig templates, so rather than requiring the Symfony2 templating service in the constructor, we can access it on a function level. This means if you want to render a twig template from a twig extension you can do the following:</p>
+<pre><code>&lt;?php
+.....
+
+class LrotherfieldExtension extends \Twig_Extension
+{
+
+   public function getFunctions()
+   {
+       return [
+           new \Twig_SimpleFunction(‘render_test’, [$this, 'render'], [
+               'is_safe' =&gt; ['html'],
+               'needs_environment' =&gt; true // Tell twig we need the environment
+           ]),
+        ];
+   }
+
+   // The twig environment gets passed as the first argument to our function
+   //  You do not need to pass this manually to the function from the calling twig template
+   public function render(Twig_Environment $env)
+   {
+   // Here we can use the environment to render the twig template
+       return $env-&gt;render( "LRotherfieldBundle::test.html.twig", []);
+   }
+
+   public function getName()
+   {
+       return 'lrotherfield_extension';
+   }
+
+}</code></pre>
+<h2>Some other cool stuff</h2>
+<p>Just reading a few lines further into the docs on twig shows that you can also grab the current context <a href="http://twig.sensiolabs.org/doc/advanced.html#context-aware-filters"><a href="http://twig.sensiolabs.org/doc/advanced.html#context-aware-filters">http://twig.sensiolabs.org/doc/advanced.html#context-aware-filters</a></a>.  This allows you to access any variables in the current scope which, although it is very situational, is a pretty cool ability.  There is the ability to run <a href="http://twig.sensiolabs.org/doc/advanced.html#dynamic-filters">dynamic functions and filters</a> too using * notation which again I don’t have a current use for but it seems pretty awesome.</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-get-twig-environment-twig-extension';
+     this.page.identifier = '1263 http:\/\/lrotherfield.com\/?p=1263';
+     this.page.title = 'Symfony2: Get the templating service in a twig extension';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

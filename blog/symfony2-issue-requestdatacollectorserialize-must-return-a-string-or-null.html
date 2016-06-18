@@ -1,0 +1,128 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2 issue: serialize() must return a string or NULL</title>
+            <meta name="description" content="This issue occurs when Symfony2 tries to serialize an entity, often in a relationship when an entity has an ArrayCollection. Change private to protected!
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2 issue: serialize() must return a string or NULL</h1>
+    <p>December 18th 2012</p>
+    <h1>serialize() must return a string or NULL</h1>
+<p>Have you ever seen this error in a Symfony2 project:</p>
+<blockquote>
+<p>SymfonyBundleFrameworkBundleDataCollectorRequestDataCollector::serialize() must return a string or NULL</p>
+</blockquote>
+<p>It was a right pain for me as searching on Google did not really return anything. If you search now you actually get the correct help from a <a href="http://stackoverflow.com/questions/9384836/symfony2-serialize-entity-object-to-session#answer-10014802">stackoverflow post</a>.</p>
+<p>This error occurs when Symfony2 tries to serialize an entity. Serializing a class does not include the private class variables in the serialized string.  This means unserializing the string results in missing information from the entity object if any of the entity class variables are private.  The most common occurrence for me is when I have a relationship with one side of the relationship having an ArrayCollection of the other side's entities.  If the entity that is related has private fields, this error pops up.  The simple solution to this error is to make all private class variables protected:</p>
+<pre><code>private $id
+
+// becomes
+
+protected $id
+
+//etc for all fields
+</code></pre>
+<p>I am not sure why the Symfony2 command line entity generator creates entities with class variables private as default but it does so remember to replace private with protected each time you generate an entity.</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-issue-requestdatacollectorserialize-must-return-a-string-or-null';
+     this.page.identifier = '375 http:\/\/lrotherfield.com\/?p=375';
+     this.page.title = 'Symfony2 issue: serialize() must return a string or NULL';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

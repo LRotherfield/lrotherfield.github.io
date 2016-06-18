@@ -1,0 +1,264 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2 Tutorial - Writing a compiler pass</title>
+            <meta name="description" content="How to use the functionality available to a compiler pass to manipulate services. A tutorial on a real application of a Symfony2 compiler pass
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2 Tutorial - Writing a compiler pass</h1>
+    <p>April 23rd 2013</p>
+    <p>This is the second article in a three part series on Symfony2 Compiler Passes.  This article is a tutorial on writing a compiler pass.</p>
+<p>The first article, explaining what a compiler pass is, can be found <a href="http://lrotherfield.com/blog/unpacking-symfony2-compiler-passes/" title="Unpacking Symfony2: What are compiler passes">here</a>.</p>
+<h2>Introduction</h2>
+<p>For a project I have been working on recently I required some of my bundles to add some doctrine configuration without modifying the global config files. Doctrine allows <a href="http://symfony.com/doc/current/cookbook/doctrine/resolve_target_entity.html">mapping using interfaces</a> which are then resolved to concrete classes at runtime. This is really useful if a bundle containing an entity does not also contain the concrete class that satisfies it's relational mapping.</p>
+<h2>The problem</h2>
+<p>The problem is, the doctrine bundle resolves these mappings in it's <a href="https://github.com/doctrine/DoctrineBundle/blob/master/DependencyInjection/DoctrineExtension.php#L351">extension</a>. So any bundle that is included in the App Kernel after the doctrine bundle (likely most of your custom and 3rd party bundles) will not be able to add mappings by simply updating the  resolve_target_entities  parameter because it has already been used. So the question is: How do we get mappings into doctrine directly from our bundle?</p>
+<h2>My Solution</h2>
+<h4>How does each bundle provide it's own interface mappings</h4>
+<p>Each bundle could of course grab the  doctrine.orm.listeners.resolve_target_entity  definition (in a compiler pass) and <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/DependencyInjection/Definition.php#L394">add method calls</a> for each of it's own interface mappings, however that is a lot of repeated code if we have multiple bundles that require mappings.</p>
+<p>Instead I was inspired by the <a href="https://github.com/orocrm/platform/blob/66e57dac23bc45c68546116dcb0eed5806e4acc3/src/Oro/Bundle/NavigationBundle/DependencyInjection/OroNavigationExtension.php#L26">Oro platform code</a> (when it was in alpha) to allow developers to write their interface mappings in a specifically named configuration file and read these files in my DI extension. This removes the repetition issue and trades it for a reserved configuration filename:</p>
+<pre><code>//MyBundle/DependencyInjection/MyBundleExtension.php
+    public function load(array $configs, ContainerBuilder $container)
+    {
+        //..
+        $entityResolutions = array();
+        foreach ($container-&gt;getParameter('kernel.bundles') as $bundle) {
+            $reflection = new ReflectionClass($bundle);
+            if (is_file($file = dirname($reflection-&gt;getFilename()) . '/Resources/config/entity_resolution.yml')) {
+                $resolutionConfig = Yaml::parse(realpath($file));
+                $entityResolutions = array_merge_recursive($entityResolutions, $resolutionConfig);
+            }
+        }
+        $container-&gt;setParameter('lrotherfield.orm.entity_resolutions', $entityResolutions);</code></pre>
+<p>What is going on:</p>
+<ol>
+<li>We loop through every bundle that is registered in the kernel.</li>
+<li>For each bundle we check to see if it has a file called entity_resolution.yml in Resources/config.</li>
+<li>If the file exists, we parse out the content and add it to an array of resolutions</li>
+<li>Once we have iterated over all the bundles in the kernel we set the mapping array as a parameter on the container</li>
+</ol>
+<p><strong>Improvement</strong>: We could require the config file to be in a sub directory using our namespace e.g &quot;Resources/config/<strong>lrotherfield</strong>/entity_resolutions.yml&quot; if we are worried about conflicts and reserving filenames.</p>
+<h4>What do the mappings look like</h4>
+<p>What I needed to provide was a simple set of mappings that could be overwritten easily. My approach was to create arrays of mappings in Yaml with the following keys:</p>
+<ul>
+<li>Interface: The interface that is used in the actual doctrine mapping code</li>
+<li>Class: The concrete class instance that should be substituted for the interface</li>
+<li>Priority: The priority that this mapping has, should two exist this is the way I wanted to resolve which one gets used</li>
+</ul>
+<p>Example Yaml file:</p>
+<pre><code>#SecondBundle entity_resolution.yml
+-
+    interface: LRotherfieldBundleFirstBundleEntityEntityInterface
+    class:     LRotherfieldBundleSecondBundleEntityEntityConcrete
+
+-
+    interface: LRotherfieldBundleThirdBundleEntityEntityInterface
+    class:     LRotherfieldBundleSecondBundleEntityEntityConcrete
+    priority:  50</code></pre>
+<pre><code>#FourthBundle entity_resolution.yml
+-
+    interface: LRotherfieldBundleThirdBundleEntityEntityInterface
+    class:     LRotherfieldBundleFourthBundleEntityEntityConcrete
+    priority:  60</code></pre>
+<p>As you can see, the second and fourth bundle are competing for the entity interface in the third bundle. However the fourth bundle has a greater priority so we want that one to get loaded.</p>
+<h4>How do the mappings get registerd with Doctrine</h4>
+<p>Finally we have to take the contents of our mappings parameter  <code>lrotherfield.orm.entity_resolutions</code>  and pass it to Doctrine. This is where the compiler pass comes in. For each registered compiler pass, the  <code>process()</code>  method will be called and passed the <a href="http://api.symfony.com/2.0/Symfony/Component/DependencyInjection/ContainerBuilder.html">container builder</a>. So we create a process method that does our business logic:</p>
+<pre><code>use SymfonyComponentDependencyInjectionCompilerCompilerPassInterface;
+use SymfonyComponentDependencyInjectionContainerBuilder;
+use SymfonyComponentDependencyInjectionReference;
+
+class EntityResolverPass implements CompilerPassInterface
+{
+    public function process(ContainerBuilder $container)
+    {</code></pre>
+<p>Our class must implement the <code>CompilerPassInterface</code> so that it can be <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/DependencyInjection/Compiler/Compiler.php#L82">added to the compiler</a>.</p>
+<p>Next we check to see the container has the  <code>doctrine.orm.listeners.resolve_target_entity</code>  service defined. If not, we will throw an exception as our code cannot function without real mappings.  If the container has the definition then we retrieve it so that we can add our mappings to it:</p>
+<pre><code>if (!$container-&gt;hasDefinition('doctrine.orm.listeners.resolve_target_entity')) {
+    throw new RuntimeException('doctrine.orm.listeners.resolve_target_entity must be defined');
+}
+$def = $container-&gt;findDefinition('doctrine.orm.listeners.resolve_target_entity');</code></pre>
+<p>I have chosen a RuntimeException because the definitions for services are defined at runtime and can change. (Choosing exceptions is always a tricky one for me)</p>
+<p>We now need to load all of the new resolutions from the container as they are stored in the new  <code>lrotherfield.orm.entity_resolutions</code>  parameter.</p>
+<pre><code>$resolutions = $container-&gt;getParameter('lrotherfield.orm.entity_resolutions');
+</code></pre>
+<p>We will also run a sort on the resolutions before using them to order them by priority (with <a href="http://php.net/manual/en/function.uasort.php">uasort</a> and associated callback) .  For readability I have abstracted this sorting:</p>
+<pre><code>private function sortResolutions($a, $b)
+{
+    $aPriority = isset($a['priority']) ? (int) $a['priority'] : 0;
+    $bPriority = isset($b['priority']) ? (int) $b['priority'] : 0;
+
+    return $aPriority &gt; $bPriority ? 1 : ($aPriority &lt; $bPriority ? -1 : 0);
+}</code></pre>
+<p>The last thing to do is loop over the resolutions and then individually pass them to doctrine by <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/DependencyInjection/Definition.php#L394">adding a method call</a> to the  addResolveTargetEntity  method on the <code>doctrine.orm.listeners.resolve_target_entity</code>service definition with the interface and concrete class. When the resolve target entity service is instantiated, addResolveTargetEntity will be called one time for each mapping.</p>
+<pre><code>if (!empty($resolutions)) {
+    uasort($resolutions, [$this, 'sortResolutions']);
+    foreach ($resolutions as $resolution) {
+        $def-&gt;addMethodCall(
+           'addResolveTargetEntity',
+            array($resolution['interface'], $resolution['class'], [])
+        );
+    }
+}
+</code></pre>
+<h5>Putting it all together</h5>
+<p>Putting the above code together we get a compiler pass that looks like:</p>
+<pre><code>...
+use SymfonyComponentDependencyInjectionCompilerCompilerPassInterface;
+use SymfonyComponentDependencyInjectionContainerBuilder;
+use SymfonyComponentDependencyInjectionReference;
+
+/**
+ * Class EntityResolverPass
+ *
+ * @author Luke Rotherfield
+ */
+class EntityResolverPass implements CompilerPassInterface
+{
+
+    /**
+     * Add any bundle level entity-interface resolutions to the doctrine entity resolver
+     *
+     * @param ContainerBuilder $container
+     *
+     * @throws InvalidArgumentException
+     */
+    public function process(ContainerBuilder $container)
+    {
+        if (!$container-&gt;hasDefinition('doctrine.orm.listeners.resolve_target_entity')) {
+            throw new RuntimeException('doctrine.orm.listeners.resolve_target_entity must be defined');
+        }
+        $def = $container-&gt;findDefinition('doctrine.orm.listeners.resolve_target_entity');
+        $resolutions = $container-&gt;getParameter('lrotherfield.orm.entity_resolutions');
+        if (!empty($resolutions)) {
+            uasort($resolutions, [$this, 'sortResolutions']);
+            foreach ($resolutions as $resolution) {
+                $def-&gt;addMethodCall( 'addResolveTargetEntity', array($resolution['interface'], $resolution['class'], []) );
+            }
+        }
+    }
+
+    private function sortResolutions($a, $b)
+    {
+        $aPriority = isset($a['priority']) ? (int) $a['priority'] : 0;
+        $bPriority = isset($b['priority']) ? (int) $b['priority'] : 0;
+
+        return $aPriority &gt; $bPriority ? 1 : ($aPriority &lt; $bPriority ? -1 : 0);
+    }
+}</code></pre>
+<h4>Final step, register the compiler pass</h4>
+<p>In the bundle class (the class that we register with the AppKernel) we now need to add the compiler pass in the build method so that it gets run:</p>
+<pre><code>    public function build(ContainerBuilder $container)
+    {
+        //…
+        $container-&gt;addCompilerPass(new EntityResolverPass());
+    }
+</code></pre>
+<p>The <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/DependencyInjection/Definition.php#L394">addCompilerPass</a> method allows us to pass a new instance of a  CompilerPassInterface  to the container. It also allows us to specify the compiler pass <a href="https://github.com/symfony/symfony/blob/2.7/src/Symfony/Component/DependencyInjection/Compiler/PassConfig.php#L27">type</a> should we want to have our pass run at a time other than before optimisation:</p>
+<h3>A real world example using interfaces for mapping</h3>
+<p>I actually discovered mapping using interfaces when studying <a href="http://sylius.org/">Sylius</a> to see how they had made their system decoupled. Although I have yet to use their code for a project, it has been great to be able to dig through thier code as it seems to me they have really invested in well designed, best practice code.</p>
+<p>The Sylius ecommerce platform <a href="https://github.com/Sylius/SyliusAddressingBundle/blob/v0.10.0/Resources/config/doctrine/model/Address.orm.xml#L28">makes use of this functionality</a> throughout it's bundles so that they can be used individually (decoupled) in other systems with other concrete classes without the developer having to update the mappings.</p>
+<p>Having recently dug a little bit further into Sylius, I can see that they have a similar solution for adding these mappings to Doctrine. The biggest difference is how they allow the developers to <a href="https://github.com/Sylius/Sylius/blob/master/src/Sylius/Bundle/AddressingBundle/SyliusAddressingBundle.php#L45">pass the mappings</a>.  This is an interesting approach as it does not require a specifically named file in the config dir and it does not have to loop through every bundle to set up the mappings. So definitely a more effeciant approach.</p>
+<p>Hopefully that all makes sense, my plan for the final article in this series is a tutorial on unit testing our compiler pass as unit testing is something I have struggled for a long time to get my head around and is certainly worth doing. I will add a link here when it is done.</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-tutorial-writing-compiler-pass';
+     this.page.identifier = '1277 http:\/\/lrotherfield.com\/?p=1277';
+     this.page.title = 'Symfony2 Tutorial: Writing a compiler pass';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

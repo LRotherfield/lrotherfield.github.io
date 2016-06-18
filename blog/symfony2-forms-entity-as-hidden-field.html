@@ -1,0 +1,268 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2 Forms: Entity as hidden field</title>
+            <meta name="description" content="I have created a component that you can install via composer to add a hidden entity form type to your symfony2 project, here is the the post about it
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2 Forms: Entity as hidden field</h1>
+    <p>April 13th 2013</p>
+    <p><em><strong>Update</strong>: I have created a component that you can install via composer to add a hidden entity form type to your symfony2 project, here is the <a href="http://lrotherfield.com/blog/symfony2-forms-hidden-entity-type-part-2/" title="Symfony2 Forms: hidden entity type part 2">post about it</a> and the <a href="https://github.com/LRotherfield/Form">git repository</a>.</em> When I started my first big project in <a href="http://symfony.com/" title="Symfony2 homepage">Symfony2</a> I very quickly ran into an issue trying to get entities as hidden fields like I used to in <a href="http://symfony.com/legacy/doc/forms/1_4/en/11-Doctrine-Integration">Symfony1.4</a>.</p>
+<h2>A bit of background</h2>
+<p>The situation arose when a client needed a system that could handle multiple resorts and multiple properties per resort.  The way they wanted the admin system to work was to click into a resort and then manage properties for that resort.  This meant I needed the system to have a property form with a manyToOne relationship to a resort.</p>
+<h2>My initial work around solution</h2>
+<p>I ended up with a work around solution that added the resort field as an entity type and passed through a <a href="http://symfony.com/doc/2.1/reference/forms/types/entity.html#query-builder" title="Symfony2 Form entity type query builder">query builder object</a> that selected just the resort that the admin was currently managing.  Something like:</p>
+<pre><code>//Controller create method
+$query_builder = $em-&gt;getRepository('ResortBundle:Resort')-&gt;createQueryBuilder('r')-&gt;where('r.id = :resort_id')-&gt;setParameter('resort_id', $resort_id)</code></pre>
+<pre><code>//FormType build form method
+$builder-&gt;add('resort', 'entity', array(
+    'class' =&gt; 'ResortBundle:Resort',
+    'query_builder' =&gt; $this-&gt;query_builder
+));</code></pre>
+<p>This actually worked remarkably well but from a user perspective was confusing as there was a select to choose the resort but only ever one option so why have it.  This is not a great way to handle this situation though.</p>
+<h2>The new, much more awesome, solution: DataTransformer</h2>
+<p>After some digging I came across a forum post that suggested someone with my above issue just use a data transformer.  So, Megatrons nerdy cousin to the rescue!  I looked up <a href="http://symfony.com/doc/2.1/cookbook/form/data_transformers.html">data transformers</a> and they are very well documented and make sense.  With this new found knowledge I wrote a base entity to id transformer that I could use for all entities in my projects:</p>
+<pre><code>&lt;?php 
+
+namespace Lrotherfield\MegatronBundle\Form\DataTransformer
+
+use Symfony\Component\Form\DataTransformerInterface;
+use Symfony\Component\Form\Exception\TransformationFailedException;
+use Doctrine\Common\Persistence\ObjectManager;
+
+class EntityToIntTransformer implements DataTransformerInterface
+{
+    /**
+     * @var \Doctrine\Common\Persistence\ObjectManager
+     */
+    private $om;
+    private $entityClass;
+    private $entityType;
+    private $entityRepository;
+
+    /**
+     * @param ObjectManager $om
+     */
+    public function __construct(ObjectManager $om)
+    {
+        $this-&gt;om = $om;
+    }
+
+    /**
+     * @param mixed $entity
+     *
+     * @return integer
+     */
+    public function transform($entity)
+    {
+        // Modified from comments to use instanceof so that base classes or interfaces can be specified
+        if (null === $entity ||!$entity instanceof $this-&gt;entityClass) {
+            // updated due to https://github.com/LRotherfield/Form/commit/140742b486352a5c9ac97590ae09f6d8b7f5be7f
+            return '';
+        }
+
+        return $entity-&gt;getId();
+    }
+
+    /**
+     * @param mixed $id
+     *
+     * @throws \Symfony\Component\Form\Exception\TransformationFailedException
+     *
+     * @return mixed|object
+     */
+    public function reverseTransform($id)
+    {
+        if (!$id) {
+            //updated due to https://github.com/LRotherfield/Form/commit/2be11d1c239edf57de9f6e418a067ea9f1f8c2ed
+            return null;
+        }
+
+        $entity = $this-&gt;om-&gt;getRepository($this-&gt;entityRepository)-&gt;findOneBy(array("id" =&gt; $id));
+
+        if (null === $entity) {
+            throw new TransformationFailedException(sprintf(
+                'A %s with id "%s" does not exist!',
+                $this-&gt;entityType,
+                $id
+            ));
+        }
+
+        return $entity;
+    }
+
+    public function setEntityType($entityType)
+    {
+        $this-&gt;entityType = $entityType;
+    }
+
+    public function setEntityClass($entityClass)
+    {
+        $this-&gt;entityClass = $entityClass;
+    }
+
+    public function setEntityRepository($entityRepository)
+    {
+        $this-&gt;entityRepository = $entityRepository;
+    }
+
+}</code></pre>
+<p>This class above requires 3 values to be set.</p>
+<ol>
+<li>The type of the entity (user, role, post etc).  This is used to provide a slightly more intuitive error message if the entity passed to transform is not correct</li>
+<li>The entity class (<code>Lrotherfield\ExampleBundle\Entity\Example</code>).  This is used to check that the entity passed to the transform function is of the provided class.</li>
+<li>The entity repository (<code>LrotherfieldExampleBundle:Example</code>).  This is used to fetch the entity using the id passed to reverseTransform.</li>
+</ol>
+<p>Values 1 and 2 are just additional features that are not really needed and could be stripped out if you want.  They only add two lines of code when you call the class though so its not a big issue to keep them in and it can help with debugging and entity integrity.</p>
+<h3>Using the data transformer</h3>
+<p>Some how we need to set the required values, this can be done in two simple ways:</p>
+<p>1.Create an extension class for each entity that you want to transform and set the values in the constructor:</p>
+<pre><code>&lt;?php
+
+namespace LRotherfield\UserBundle\Form\DataTransformer;
+
+use Doctrine\Common\Persistence\ObjectManager;
+
+class UserToIntTransformer extends EntityToIntTransformer
+{
+    /**
+     * @param ObjectManager $om
+     */
+    public function __construct(ObjectManager $om)
+    {
+        parent::__construct($om);
+        $this-&gt;setEntityClass("LRotherfield\\UserBundle\\Entity\\User");
+        $this-&gt;setEntityRepository("LRotherfieldUserBundle:User");
+        $this-&gt;setEntityType("user");
+    }
+
+}</code></pre>
+<p>2. As the setters are public methods, you can just instantiate the transformer class and then call the methods one after the other:</p>
+<pre><code>//In a form class
+public function buildForm(FormBuilderInterface $builder, array $options)
+    {
+        $userTransformer = new EntityToIntTransformer($options["em"]);
+        $userTransformer-&gt;setEntityClass("LRotherfield\\UserBundle\\Entity\\User");
+        $userTransformer-&gt;setEntityRepository("LRotherfieldUserBundle:User");
+        $userTransformer-&gt;setEntityType("user");
+    }
+//...</code></pre>
+<p>Then, once you have used your preferred method, you can simply use the data transformer to make your hidden field:</p>
+<pre><code>//In your form class
+    public function buildForm(FormBuilderInterface $builder, array $options)
+    {
+        $userTransformer = new UserToIntTransformer($options["em"]);
+
+        $builder
+            -&gt;add($builder-&gt;create('user', 'hidden')-&gt;addModelTransformer($userTransformer));
+        //...</code></pre>
+<p>Remember you must pass an entity manager through to the form class options argument with the key &quot;em&quot;</p>
+<pre><code>//In your controller
+$form = $this-&gt;createForm(new YourFormType(), $yourEntity, array(
+    'em' =&gt; $this-&gt;getDoctrine()-&gt;getManager()
+));</code></pre>
+<h2>Closing notes</h2>
+<p>Hopefully this little class will be of some help to you if you were/are in a similar situation to me when I started.  As I mentioned, most of the above is clearly <a href="http://symfony.com/doc/2.1/cookbook/form/data_transformers.html">documented on the Symfony2 website</a>. If you have any feedback, please let me know with the comment form below.</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-forms-entity-as-hidden-field';
+     this.page.identifier = '459 http:\/\/lrotherfield.com\/?p=459';
+     this.page.title = 'Symfony2 Forms: Entity as hidden field';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

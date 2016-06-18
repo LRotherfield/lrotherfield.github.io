@@ -1,0 +1,310 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony development tips and tutorials</title>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+                <h1>Symfony tutorials, tips and hidden gems</h1>
+    <p>
+        Below are a number of tutorial and informative articles for the Symfony framework.
+        Hopefully they will be useful in your Symfony journey.
+        If you have any questions, please feel free to comment on the specific post and I will do my best to respond
+        in a timely manner.
+    </p>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/order-by-onetomany-relationships-symfony2">
+                        ORDER BY statement for Symfony2 Doctrine OneToMany/ManyToMany relationships
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>April 23rd 2013</small>
+                </p>
+
+                <p>Quick post explaining how to order an associated collection on a doctrine entity in Symfony 2 using an annotation
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-forms-entity-as-hidden-field">
+                        Symfony2 Forms: Entity as hidden field
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>April 13th 2013</small>
+                </p>
+
+                <p>I have created a component that you can install via composer to add a hidden entity form type to your symfony2 project, here is the the post about it
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-forms-hidden-entity-type-part-2">
+                        Symfony2 Forms: Hidden entity type part 2
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>August 1st 2013</small>
+                </p>
+
+                <p>Instructions on installing and using my Symfony2 Form component addition that allows entities to be rendered as hidden fields in forms
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-get-twig-environment-twig-extension">
+                        Symfony2: Get the templating service in a twig extension
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>November 18th 2014</small>
+                </p>
+
+                <p>Get the twig environment in a twig extension without injecting the whole container. Render twig templates from a twig extension correctly
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-issue-requestdatacollectorserialize-must-return-a-string-or-null">
+                        Symfony2 issue: serialize() must return a string or NULL
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>December 18th 2012</small>
+                </p>
+
+                <p>This issue occurs when Symfony2 tries to serialize an entity, often in a relationship when an entity has an ArrayCollection. Simple answer: Change private fields to protected so they are not hidden from the serializer!
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-tutorial-creating-and-using-a-service">
+                        Symfony2 Tutorial - Creating and using a service
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>April 23rd 2013</small>
+                </p>
+
+                <p>Easy to follow Symfony2 tutorial walking through creating a service and using it in a Symfony2 application
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-tutorial-twig-extensions-and-dependency-injection">
+                        Symfony2 tutorial: Twig extensions and dependency injection
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>March 13th 2013</small>
+                </p>
+
+                <p>This is part 2 of the Symfony2 tutorial making a flash notification bundle to learn the basics of services, dependency injection and twig extensions
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/symfony2-tutorial-writing-compiler-pass">
+                        Symfony2 Tutorial - Writing a compiler pass
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>April 23rd 2013</small>
+                </p>
+
+                <p>How to use the functionality available to a compiler pass to manipulate services. A tutorial on a real application of a Symfony2 compiler pass
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>
+                    <a href="/blog/unpacking-symfony2-compiler-passes">
+                        Unpacking Symfony2 compiler passes
+                    </a>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <p>
+                    <small>December 8th 2014</small>
+                </p>
+
+                <p>Unpacking how compiler passes work in Symfony2, how they enable us to manipulate service definitions and looking at some real world examples
+</p>
+                                                    <p>
+                        Author:
+                        <a tabindex="0" role="button" data-toggle="popover" data-trigger="focus hover" data-html="true"
+                                   title="Luke Rotherfield - Symfony2 Developer"
+                                   data-content="<div class='media'><div class='media-left'><img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'></div><div class='media-body'><p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p></div></div>">
+                            Luke Rotherfield
+                        </a>
+                    </p>
+                            </div>
+        </div>
+            </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+    <script>
+        $(function () {
+            $('[data-toggle="popover"]').popover();
+        })
+    </script>
+</body>
+</html>

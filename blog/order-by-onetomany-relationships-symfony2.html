@@ -1,0 +1,142 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ORDER BY statement for Symfony2 Doctrine OneToMany/ManyToMany relationships</title>
+            <meta name="description" content="This is a hearty description of mega ness
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>ORDER BY statement for Symfony2 Doctrine OneToMany/ManyToMany relationships</h1>
+    <p>April 23rd 2013</p>
+    <h2>The simple answer</h2>
+<p>You just need to use the <code>@ORMOrderBy()</code> statement in your entity when you declare the relationship:</p>
+<pre><code class="language-php">
+/**
+ * @ORMOneToMany(targetEntity="images", mappedBy="gallery")
+ * @ORMOrderBy({"entity_attribute" = "DESC", "another_entity_attribute" = "ASC"})
+ */
+
+protected $images;
+</code></pre>
+<h2>The longer answer with Symfony2 application</h2>
+<p>I have been building a multi-site micro CMS using Symfony2.To order the pages I have created a<a href="http://www.sitepoint.com/hierarchical-data-database-2/" title="How I learned about hierarchical tree traversal with PHP">Hierarchical tree traversal</a> system. Because there are multiple sites in the database, each page has its own id field too as the left and right values are not unique. On the administration side, there was no issue. In 2011 I wrote an admin system for <a href="http://valeblinds.com/" title="Bespoke Blinds Ecommerce website">a besboke eCommerce site</a> in Symfony 1.4 and created a full tree traversal system with jQuery drag and drop ordering. So a few weeks ago I ported my old code into Symfony2 which was remarkably easy as there are many similarities between the two frameworks.</p>
+<p>The issue came on the front end. I am using the <a href="http://knpbundles.com/KnpLabs/KnpMenuBundle" title="Navigation and menu bundle for Symfony2">Symfony2 menu bundle from KnpLabs</a>which works a treat but in order to generate the side navigation I need to get the current active page and all its children. I added a OneToMany relationship on the pages entity to itself to get the children pages with one query:e into Symfony2 which only took a day ish.</p>
+<pre><code>
+/**
+ * @ORMOneToMany(targetEntity="Page", mappedBy="parent")
+ */
+
+protected $children;
+</code></pre>
+<p>Unfortunatley because my page entity also has an id field, when I call <code>$page-&gt;getChildren()</code> the returned objects are in id order. Some quick google searching for &quot;Symfony2 order OneToMany&quot; returned a <a href="http://stackoverflow.com/questions/12478583/how-to-orderby-on-onetomany-manytoone" title="Order by statement for symfony2 manyToMany relationships">useful post</a> from stackoverflow. One of the answers mentions the <code>@ORMOrderBy</code> statement which worked awesomely:</p>
+<pre><code>
+/**
+ * @ORMOneToMany(targetEntity="Page", mappedBy="parent")
+ * @ORMOrderBy({"lft" = "ASC"})
+ */
+
+protected $children;
+</code></pre>
+<p>Happy days, once again Symfony2 and Doctrine have an awesome solution for me!</p>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/order-by-onetomany-relationships-symfony2';
+     this.page.identifier = '242 http:\/\/lrotherfield.com\/?p=242';
+     this.page.title = 'Order by statement for Doctrine relationships in Symfony2 Entities';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

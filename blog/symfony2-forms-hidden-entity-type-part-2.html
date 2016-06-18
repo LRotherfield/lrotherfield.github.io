@@ -1,0 +1,151 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Symfony2 Forms: Hidden entity type part 2</title>
+            <meta name="description" content="Instructions on installing and using my Symfony2 Form component addition that allows entities to be rendered as hidden fields in forms
+"/>
+        <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">
+                LRotherfield.com
+            </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li ><a href="/">Home</a></li>
+                <li class="active"><a href="/blog">Blog</a>
+                </li>
+                <li><a href="#" data-toggle="modal" data-target="#contactModal">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="blog-post">
+    <h1>Symfony2 Forms: Hidden entity type part 2</h1>
+    <p>August 1st 2013</p>
+    <p><em>(please note this article is not up to date, although the content is helpful, please see the repository <a href="https://github.com/LRotherfield/Form">readme</a>)</em></p>
+<p>A few months ago I <a href="http://lrotherfield.com/blog/symfony2-forms-entity-as-hidden-field/" title="Symfony2 Forms: Entity as hidden field">wrote a tutorial</a> on using a data transformer to add entities as valid hidden fields in a Symfony2 form.  A few of the comments left by readers either noted a gist that showed an installable hidden entity type (that does not exist any more) or mentioned that it was a lot of code to write in order to gain the functionality. Well, good news for those readers (and hopefully you too), I have finally gotten around to putting the contents of the tutorial into a component that you can install via composer into any of your Symfony2 projects.  This component will allow you to render any entity that has an id as a hidden field in a Symfony2 form! You can see the code in it's GitHub repository here: <a href="https://github.com/LRotherfield/Form"><a href="https://github.com/LRotherfield/Form">https://github.com/LRotherfield/Form</a></a> There is a readme file on the repository but I will go over the installation and usage here too. First lets install it, this is simply done by adding the &quot;lrotherfield/form&quot; package to your requirements in composer.json:</p>
+<pre><code>"require": {
+        "lrotherfield/form": "1.1.x-dev",
+}</code></pre>
+<p>Then update your vendors: <code>php composer.phar update</code> Next we need to register the hidden_entity form type as a service and tag it as a form.type.  This can be done in any loaded config yaml file like app/config.yml or any bundle config/services.yml file.</p>
+<pre><code>services:
+    lrotherfield.form.type.hidden_entity:
+        class: Lrotherfield\Component\Form\Type\HiddenEntityType
+        arguments:
+            - @doctrine.orm.entity_manager
+        tags:
+            - { name: form.type, alias: hidden_entity }</code></pre>
+<p>Finally we can now use the hidden_entity type as a form builder type argument.  The only additional option we need to define is entity_repository.  This must be the fully qualified namespace or doctrine logical name of the entity that you want to transform into a hidden field.</p>
+<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
+{
+    $builder
+        //...
+        -&gt;add('example', 'hidden_entity', array(
+                "entity_repository" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity"
+            ));
+    ;
+}</code></pre>
+<p>I hope this helps anyone after rendering entities as hidden fields in Symfony2 forms.  If you have any questions, put them in a comment using the form below.</p>
+<h2>Update</h2>
+<p>I have released a <a href="https://github.com/LRotherfield/Form/releases/tag/v1.1.0">new tag</a> of the hidden entity component that adds two changes:</p>
+<p>1) As pointed out in the comments below, <code>entity_repository</code> is not really a good key for the entity class so I have changed the key to <code>class</code>.
+2) I have added the ability to provide a custom entity transformer if desired. The new implementation of the component with the updates should look something like:</p>
+<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
+{
+    $builder
+        //...
+        -&gt;add('example', 'hidden_entity', array(
+                "class" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity",
+        //Optional entity transformer
+        "transformer" =&gt; "YourNamespace\Form\DataTransformer\YourTransformer"
+            ));
+    ;
+}</code></pre>
+                <div class="panel panel-default">
+            <div class="panel-heading">
+                Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
+            </div>
+            <div class="panel-body">
+                <div class='media'>
+                    <div class='media-left'>
+                        <img class='media-object' src='/img/lrotherfield.png' alt='Luke Rotherfield' width='75'/>
+                    </div>
+                    <div class='media-body'>
+                        <p>Symfony2 Developer in CT USA. Luke is a Symfony2 wizard and has written some sweet libraries of his own. Luke loves Jesus, his gorgeous wife and his two beautiful daughters :)
+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<link rel="stylesheet" href="/css/highlight-theme.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+<script>
+    hljs.configure({
+        languages: ['php'] // 4 spaces
+    });
+    hljs.initHighlighting();
+</script>
+<div id="disqus_thread"></div>
+<script>
+     var disqus_config = function () {
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-forms-hidden-entity-type-part-2';
+     this.page.identifier = '608 http:\/\/lrotherfield.com\/?p=608';
+     this.page.title = 'Symfony2 Forms: Hidden entity type part 2';
+     };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//lrotherfield.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" role="dialog" aria-labelledby="contactModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="contactModalLabel">Contact information</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Email address</strong>: luke@lrotherfield.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+        integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+        crossorigin="anonymous"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
