@@ -20,6 +20,12 @@
 <nav class="navbar navbar-default navbar-fixed-top">
     <div class="container">
         <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
             <a class="navbar-brand" href="/">
                 LRotherfield.com
             </a>
@@ -51,7 +57,7 @@
 protected $images;
 </code></pre>
 <h2>The longer answer with Symfony2 application</h2>
-<p>I have been building a multi-site micro CMS using Symfony2.To order the pages I have created a<a href="http://www.sitepoint.com/hierarchical-data-database-2/" title="How I learned about hierarchical tree traversal with PHP">Hierarchical tree traversal</a> system. Because there are multiple sites in the database, each page has its own id field too as the left and right values are not unique. On the administration side, there was no issue. In 2011 I wrote an admin system for <a href="http://valeblinds.com/" title="Bespoke Blinds Ecommerce website">a besboke eCommerce site</a> in Symfony 1.4 and created a full tree traversal system with jQuery drag and drop ordering. So a few weeks ago I ported my old code into Symfony2 which was remarkably easy as there are many similarities between the two frameworks.</p>
+<p>I have been building a multi-site micro CMS using Symfony2. To order the pages I have created a <a href="http://www.sitepoint.com/hierarchical-data-database-2/" title="How I learned about hierarchical tree traversal with PHP">Hierarchical tree traversal</a> system. Because there are multiple sites in the database, each page has its own id field too as the left and right values are not unique. On the administration side, there was no issue. In 2011 I wrote an admin system for <a href="http://valeblinds.com/" title="Bespoke Blinds Ecommerce website">a besboke eCommerce site</a> in Symfony 1.4 and created a full tree traversal system with jQuery drag and drop ordering. So a few weeks ago I ported my old code into Symfony2 which was remarkably easy as there are many similarities between the two frameworks.</p>
 <p>The issue came on the front end. I am using the <a href="http://knpbundles.com/KnpLabs/KnpMenuBundle" title="Navigation and menu bundle for Symfony2">Symfony2 menu bundle from KnpLabs</a>which works a treat but in order to generate the side navigation I need to get the current active page and all its children. I added a OneToMany relationship on the pages entity to itself to get the children pages with one query:e into Symfony2 which only took a day ish.</p>
 <pre><code>
 /**
