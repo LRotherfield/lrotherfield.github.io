@@ -3,8 +3,9 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Symfony2 Forms: Hidden entity type part 2</title>
-            <meta name="description" content="Instructions on installing and using my Symfony2 Form component addition that allows entities to be rendered as hidden fields in forms
+    <link rel="canonical" href="http://www.lrotherfield.com/blog/order-by-onetomany-relationships-symfony2">
+    <title>ORDER BY statement for Symfony2 Doctrine OneToMany/ManyToMany relationships</title>
+            <meta name="description" content="This is a hearty description of mega ness
 "/>
         <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
@@ -44,47 +45,38 @@
     <div class="row">
         <div class="col-md-10 col-md-offset-1">
             <div class="blog-post">
-    <h1>Symfony2 Forms: Hidden entity type part 2</h1>
-    <p>August 1st 2013</p>
-    <p><em>(please note this article is not up to date, although the content is helpful, please see the repository <a href="https://github.com/LRotherfield/Form">readme</a>)</em></p>
-<p>A few months ago I <a href="http://www.lrotherfield.com/blog/symfony2-forms-entity-as-hidden-field" title="Symfony2 Forms: Entity as hidden field">wrote a tutorial</a> on using a data transformer to add entities as valid hidden fields in a Symfony2 form.  A few of the comments left by readers either noted a gist that showed an installable hidden entity type (that does not exist any more) or mentioned that it was a lot of code to write in order to gain the functionality. Well, good news for those readers (and hopefully you too), I have finally gotten around to putting the contents of the tutorial into a component that you can install via composer into any of your Symfony2 projects.  This component will allow you to render any entity that has an id as a hidden field in a Symfony2 form! You can see the code in it's GitHub repository here: <a href="https://github.com/LRotherfield/Form"><a href="https://github.com/LRotherfield/Form">https://github.com/LRotherfield/Form</a></a> There is a readme file on the repository but I will go over the installation and usage here too. First lets install it, this is simply done by adding the &quot;lrotherfield/form&quot; package to your requirements in composer.json:</p>
-<pre><code>"require": {
-        "lrotherfield/form": "1.1.x-dev",
-}</code></pre>
-<p>Then update your vendors: <code>php composer.phar update</code> Next we need to register the hidden_entity form type as a service and tag it as a form.type.  This can be done in any loaded config yaml file like app/config.yml or any bundle config/services.yml file.</p>
-<pre><code>services:
-    lrotherfield.form.type.hidden_entity:
-        class: Lrotherfield\Component\Form\Type\HiddenEntityType
-        arguments:
-            - @doctrine.orm.entity_manager
-        tags:
-            - { name: form.type, alias: hidden_entity }</code></pre>
-<p>Finally we can now use the hidden_entity type as a form builder type argument.  The only additional option we need to define is entity_repository.  This must be the fully qualified namespace or doctrine logical name of the entity that you want to transform into a hidden field.</p>
-<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
-{
-    $builder
-        //...
-        -&gt;add('example', 'hidden_entity', array(
-                "entity_repository" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity"
-            ));
-    ;
-}</code></pre>
-<p>I hope this helps anyone after rendering entities as hidden fields in Symfony2 forms.  If you have any questions, put them in a comment using the form below.</p>
-<h2>Update</h2>
-<p>I have released a <a href="https://github.com/LRotherfield/Form/releases/tag/v1.1.0">new tag</a> of the hidden entity component that adds two changes:</p>
-<p>1) As pointed out in the comments below, <code>entity_repository</code> is not really a good key for the entity class so I have changed the key to <code>class</code>.
-2) I have added the ability to provide a custom entity transformer if desired. The new implementation of the component with the updates should look something like:</p>
-<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
-{
-    $builder
-        //...
-        -&gt;add('example', 'hidden_entity', array(
-                "class" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity",
-        //Optional entity transformer
-        "transformer" =&gt; "YourNamespace\Form\DataTransformer\YourTransformer"
-            ));
-    ;
-}</code></pre>
+    <h1>ORDER BY statement for Symfony2 Doctrine OneToMany/ManyToMany relationships</h1>
+    <p>April 23rd 2013</p>
+    <h2>The simple answer</h2>
+<p>You just need to use the <code>@ORMOrderBy()</code> statement in your entity when you declare the relationship:</p>
+<pre><code class="language-php">
+/**
+ * @ORMOneToMany(targetEntity="images", mappedBy="gallery")
+ * @ORMOrderBy({"entity_attribute" = "DESC", "another_entity_attribute" = "ASC"})
+ */
+
+protected $images;
+</code></pre>
+<h2>The longer answer with Symfony2 application</h2>
+<p>I have been building a multi-site micro CMS using Symfony2. To order the pages I have created a <a href="http://www.sitepoint.com/hierarchical-data-database-2/" title="How I learned about hierarchical tree traversal with PHP">Hierarchical tree traversal</a> system. Because there are multiple sites in the database, each page has its own id field too as the left and right values are not unique. On the administration side, there was no issue. In 2011 I wrote an admin system for <a href="http://valeblinds.com/" title="Bespoke Blinds Ecommerce website">a besboke eCommerce site</a> in Symfony 1.4 and created a full tree traversal system with jQuery drag and drop ordering. So a few weeks ago I ported my old code into Symfony2 which was remarkably easy as there are many similarities between the two frameworks.</p>
+<p>The issue came on the front end. I am using the <a href="http://knpbundles.com/KnpLabs/KnpMenuBundle" title="Navigation and menu bundle for Symfony2">Symfony2 menu bundle from KnpLabs</a>which works a treat but in order to generate the side navigation I need to get the current active page and all its children. I added a OneToMany relationship on the pages entity to itself to get the children pages with one query:e into Symfony2 which only took a day ish.</p>
+<pre><code>
+/**
+ * @ORMOneToMany(targetEntity="Page", mappedBy="parent")
+ */
+
+protected $children;
+</code></pre>
+<p>Unfortunatley because my page entity also has an id field, when I call <code>$page-&gt;getChildren()</code> the returned objects are in id order. Some quick google searching for &quot;Symfony2 order OneToMany&quot; returned a <a href="http://stackoverflow.com/questions/12478583/how-to-orderby-on-onetomany-manytoone" title="Order by statement for symfony2 manyToMany relationships">useful post</a> from stackoverflow. One of the answers mentions the <code>@ORMOrderBy</code> statement which worked awesomely:</p>
+<pre><code>
+/**
+ * @ORMOneToMany(targetEntity="Page", mappedBy="parent")
+ * @ORMOrderBy({"lft" = "ASC"})
+ */
+
+protected $children;
+</code></pre>
+<p>Happy days, once again Symfony2 and Doctrine have an awesome solution for me!</p>
                 <div class="panel panel-default">
             <div class="panel-heading">
                 Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
@@ -113,9 +105,9 @@
 <div id="disqus_thread"></div>
 <script>
      var disqus_config = function () {
-     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-forms-hidden-entity-type-part-2';
-     this.page.identifier = '608 http:\/\/lrotherfield.com\/?p=608';
-     this.page.title = 'Symfony2 Forms: Hidden entity type part 2';
+     this.page.url = 'http://www.lrotherfield.com/blog/order-by-onetomany-relationships-symfony2';
+     this.page.identifier = '242 http:\/\/lrotherfield.com\/?p=242';
+     this.page.title = 'Order by statement for Doctrine relationships in Symfony2 Entities';
      };
 
     (function() { // DON'T EDIT BELOW THIS LINE

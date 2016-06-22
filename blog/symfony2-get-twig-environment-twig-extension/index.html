@@ -3,8 +3,9 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Symfony2 Forms: Hidden entity type part 2</title>
-            <meta name="description" content="Instructions on installing and using my Symfony2 Form component addition that allows entities to be rendered as hidden fields in forms
+    <link rel="canonical" href="http://www.lrotherfield.com/blog/symfony2-get-twig-environment-twig-extension">
+    <title>Symfony2: Get the templating service in a twig extension</title>
+            <meta name="description" content="Get the twig environment in a twig extension without injecting the whole container. Render twig templates from a twig extension correctly
 "/>
         <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
@@ -44,47 +45,43 @@
     <div class="row">
         <div class="col-md-10 col-md-offset-1">
             <div class="blog-post">
-    <h1>Symfony2 Forms: Hidden entity type part 2</h1>
-    <p>August 1st 2013</p>
-    <p><em>(please note this article is not up to date, although the content is helpful, please see the repository <a href="https://github.com/LRotherfield/Form">readme</a>)</em></p>
-<p>A few months ago I <a href="http://www.lrotherfield.com/blog/symfony2-forms-entity-as-hidden-field" title="Symfony2 Forms: Entity as hidden field">wrote a tutorial</a> on using a data transformer to add entities as valid hidden fields in a Symfony2 form.  A few of the comments left by readers either noted a gist that showed an installable hidden entity type (that does not exist any more) or mentioned that it was a lot of code to write in order to gain the functionality. Well, good news for those readers (and hopefully you too), I have finally gotten around to putting the contents of the tutorial into a component that you can install via composer into any of your Symfony2 projects.  This component will allow you to render any entity that has an id as a hidden field in a Symfony2 form! You can see the code in it's GitHub repository here: <a href="https://github.com/LRotherfield/Form"><a href="https://github.com/LRotherfield/Form">https://github.com/LRotherfield/Form</a></a> There is a readme file on the repository but I will go over the installation and usage here too. First lets install it, this is simply done by adding the &quot;lrotherfield/form&quot; package to your requirements in composer.json:</p>
-<pre><code>"require": {
-        "lrotherfield/form": "1.1.x-dev",
-}</code></pre>
-<p>Then update your vendors: <code>php composer.phar update</code> Next we need to register the hidden_entity form type as a service and tag it as a form.type.  This can be done in any loaded config yaml file like app/config.yml or any bundle config/services.yml file.</p>
-<pre><code>services:
-    lrotherfield.form.type.hidden_entity:
-        class: Lrotherfield\Component\Form\Type\HiddenEntityType
-        arguments:
-            - @doctrine.orm.entity_manager
-        tags:
-            - { name: form.type, alias: hidden_entity }</code></pre>
-<p>Finally we can now use the hidden_entity type as a form builder type argument.  The only additional option we need to define is entity_repository.  This must be the fully qualified namespace or doctrine logical name of the entity that you want to transform into a hidden field.</p>
-<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
+    <h1>Symfony2: Get the templating service in a twig extension</h1>
+    <p>November 18th 2014</p>
+    <p>A while ago I wrote <a href="http://www.lrotherfield.com/blog/symfony2-tutorial-twig-extensions-and-dependency-injection" title="Symfony2 tutorial: Twig extensions and dependency injection">a tutorial on how to write a twig extension</a>.  One of the issues I had, which was also noted in the comments, was I had to inject the whole container into my extension in order to get the templating service.  I could not figure out a solution to getting the templating service in another way and Symfony’s suggested fix for circular references, according to the exception, is to just inject the container.</p>
+<h2>Solution</h2>
+<p>There is however a solution, twig functions and filters can be flagged as requiring the current twig environment by using the <a href="http://twig.sensiolabs.org/doc/advanced.html#environment-aware-filters">needs_environment</a> flag.  The twig environment is the class required to render twig templates, so rather than requiring the Symfony2 templating service in the constructor, we can access it on a function level. This means if you want to render a twig template from a twig extension you can do the following:</p>
+<pre><code>&lt;?php
+.....
+
+class LrotherfieldExtension extends \Twig_Extension
 {
-    $builder
-        //...
-        -&gt;add('example', 'hidden_entity', array(
-                "entity_repository" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity"
-            ));
-    ;
+
+   public function getFunctions()
+   {
+       return [
+           new \Twig_SimpleFunction(‘render_test’, [$this, 'render'], [
+               'is_safe' =&gt; ['html'],
+               'needs_environment' =&gt; true // Tell twig we need the environment
+           ]),
+        ];
+   }
+
+   // The twig environment gets passed as the first argument to our function
+   //  You do not need to pass this manually to the function from the calling twig template
+   public function render(Twig_Environment $env)
+   {
+   // Here we can use the environment to render the twig template
+       return $env-&gt;render( "LRotherfieldBundle::test.html.twig", []);
+   }
+
+   public function getName()
+   {
+       return 'lrotherfield_extension';
+   }
+
 }</code></pre>
-<p>I hope this helps anyone after rendering entities as hidden fields in Symfony2 forms.  If you have any questions, put them in a comment using the form below.</p>
-<h2>Update</h2>
-<p>I have released a <a href="https://github.com/LRotherfield/Form/releases/tag/v1.1.0">new tag</a> of the hidden entity component that adds two changes:</p>
-<p>1) As pointed out in the comments below, <code>entity_repository</code> is not really a good key for the entity class so I have changed the key to <code>class</code>.
-2) I have added the ability to provide a custom entity transformer if desired. The new implementation of the component with the updates should look something like:</p>
-<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
-{
-    $builder
-        //...
-        -&gt;add('example', 'hidden_entity', array(
-                "class" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity",
-        //Optional entity transformer
-        "transformer" =&gt; "YourNamespace\Form\DataTransformer\YourTransformer"
-            ));
-    ;
-}</code></pre>
+<h2>Some other cool stuff</h2>
+<p>Just reading a few lines further into the docs on twig shows that you can also grab the current context <a href="http://twig.sensiolabs.org/doc/advanced.html#context-aware-filters"><a href="http://twig.sensiolabs.org/doc/advanced.html#context-aware-filters">http://twig.sensiolabs.org/doc/advanced.html#context-aware-filters</a></a>.  This allows you to access any variables in the current scope which, although it is very situational, is a pretty cool ability.  There is the ability to run <a href="http://twig.sensiolabs.org/doc/advanced.html#dynamic-filters">dynamic functions and filters</a> too using * notation which again I don’t have a current use for but it seems pretty awesome.</p>
                 <div class="panel panel-default">
             <div class="panel-heading">
                 Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
@@ -113,9 +110,9 @@
 <div id="disqus_thread"></div>
 <script>
      var disqus_config = function () {
-     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-forms-hidden-entity-type-part-2';
-     this.page.identifier = '608 http:\/\/lrotherfield.com\/?p=608';
-     this.page.title = 'Symfony2 Forms: Hidden entity type part 2';
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-get-twig-environment-twig-extension';
+     this.page.identifier = '1263 http:\/\/lrotherfield.com\/?p=1263';
+     this.page.title = 'Symfony2: Get the templating service in a twig extension';
      };
 
     (function() { // DON'T EDIT BELOW THIS LINE

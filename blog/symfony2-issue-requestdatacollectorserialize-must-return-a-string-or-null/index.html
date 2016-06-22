@@ -3,8 +3,9 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Symfony2 Forms: Hidden entity type part 2</title>
-            <meta name="description" content="Instructions on installing and using my Symfony2 Form component addition that allows entities to be rendered as hidden fields in forms
+    <link rel="canonical" href="http://www.lrotherfield.com/blog/symfony2-issue-requestdatacollectorserialize-must-return-a-string-or-null">
+    <title>Symfony2 issue: serialize() must return a string or NULL</title>
+            <meta name="description" content="This issue occurs when Symfony2 tries to serialize an entity, often in a relationship when an entity has an ArrayCollection. Change private to protected!
 "/>
         <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
@@ -44,47 +45,24 @@
     <div class="row">
         <div class="col-md-10 col-md-offset-1">
             <div class="blog-post">
-    <h1>Symfony2 Forms: Hidden entity type part 2</h1>
-    <p>August 1st 2013</p>
-    <p><em>(please note this article is not up to date, although the content is helpful, please see the repository <a href="https://github.com/LRotherfield/Form">readme</a>)</em></p>
-<p>A few months ago I <a href="http://www.lrotherfield.com/blog/symfony2-forms-entity-as-hidden-field" title="Symfony2 Forms: Entity as hidden field">wrote a tutorial</a> on using a data transformer to add entities as valid hidden fields in a Symfony2 form.  A few of the comments left by readers either noted a gist that showed an installable hidden entity type (that does not exist any more) or mentioned that it was a lot of code to write in order to gain the functionality. Well, good news for those readers (and hopefully you too), I have finally gotten around to putting the contents of the tutorial into a component that you can install via composer into any of your Symfony2 projects.  This component will allow you to render any entity that has an id as a hidden field in a Symfony2 form! You can see the code in it's GitHub repository here: <a href="https://github.com/LRotherfield/Form"><a href="https://github.com/LRotherfield/Form">https://github.com/LRotherfield/Form</a></a> There is a readme file on the repository but I will go over the installation and usage here too. First lets install it, this is simply done by adding the &quot;lrotherfield/form&quot; package to your requirements in composer.json:</p>
-<pre><code>"require": {
-        "lrotherfield/form": "1.1.x-dev",
-}</code></pre>
-<p>Then update your vendors: <code>php composer.phar update</code> Next we need to register the hidden_entity form type as a service and tag it as a form.type.  This can be done in any loaded config yaml file like app/config.yml or any bundle config/services.yml file.</p>
-<pre><code>services:
-    lrotherfield.form.type.hidden_entity:
-        class: Lrotherfield\Component\Form\Type\HiddenEntityType
-        arguments:
-            - @doctrine.orm.entity_manager
-        tags:
-            - { name: form.type, alias: hidden_entity }</code></pre>
-<p>Finally we can now use the hidden_entity type as a form builder type argument.  The only additional option we need to define is entity_repository.  This must be the fully qualified namespace or doctrine logical name of the entity that you want to transform into a hidden field.</p>
-<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
-{
-    $builder
-        //...
-        -&gt;add('example', 'hidden_entity', array(
-                "entity_repository" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity"
-            ));
-    ;
-}</code></pre>
-<p>I hope this helps anyone after rendering entities as hidden fields in Symfony2 forms.  If you have any questions, put them in a comment using the form below.</p>
-<h2>Update</h2>
-<p>I have released a <a href="https://github.com/LRotherfield/Form/releases/tag/v1.1.0">new tag</a> of the hidden entity component that adds two changes:</p>
-<p>1) As pointed out in the comments below, <code>entity_repository</code> is not really a good key for the entity class so I have changed the key to <code>class</code>.
-2) I have added the ability to provide a custom entity transformer if desired. The new implementation of the component with the updates should look something like:</p>
-<pre><code>public function buildForm(FormBuilderInterface $builder, array $options)
-{
-    $builder
-        //...
-        -&gt;add('example', 'hidden_entity', array(
-                "class" =&gt; "Lrotherfield\\Bundle\\ExampleBundle\\Entity\\ExampleEntity",
-        //Optional entity transformer
-        "transformer" =&gt; "YourNamespace\Form\DataTransformer\YourTransformer"
-            ));
-    ;
-}</code></pre>
+    <h1>Symfony2 issue: serialize() must return a string or NULL</h1>
+    <p>December 18th 2012</p>
+    <h1>serialize() must return a string or NULL</h1>
+<p>Have you ever seen this error in a Symfony2 project:</p>
+<blockquote>
+<p>SymfonyBundleFrameworkBundleDataCollectorRequestDataCollector::serialize() must return a string or NULL</p>
+</blockquote>
+<p>It was a right pain for me as searching on Google did not really return anything. If you search now you actually get the correct help from a <a href="http://stackoverflow.com/questions/9384836/symfony2-serialize-entity-object-to-session#answer-10014802">stackoverflow post</a>.</p>
+<p>This error occurs when Symfony2 tries to serialize an entity. Serializing a class does not include the private class variables in the serialized string.  This means unserializing the string results in missing information from the entity object if any of the entity class variables are private.  The most common occurrence for me is when I have a relationship with one side of the relationship having an ArrayCollection of the other side's entities.  If the entity that is related has private fields, this error pops up.  The simple solution to this error is to make all private class variables protected:</p>
+<pre><code>private $id
+
+// becomes
+
+protected $id
+
+//etc for all fields
+</code></pre>
+<p>I am not sure why the Symfony2 command line entity generator creates entities with class variables private as default but it does so remember to replace private with protected each time you generate an entity.</p>
                 <div class="panel panel-default">
             <div class="panel-heading">
                 Written by: <strong><a href="http://www.lrotherfield.com">Luke Rotherfield - Symfony2 Developer</a></strong>
@@ -113,9 +91,9 @@
 <div id="disqus_thread"></div>
 <script>
      var disqus_config = function () {
-     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-forms-hidden-entity-type-part-2';
-     this.page.identifier = '608 http:\/\/lrotherfield.com\/?p=608';
-     this.page.title = 'Symfony2 Forms: Hidden entity type part 2';
+     this.page.url = 'http://www.lrotherfield.com/blog/symfony2-issue-requestdatacollectorserialize-must-return-a-string-or-null';
+     this.page.identifier = '375 http:\/\/lrotherfield.com\/?p=375';
+     this.page.title = 'Symfony2 issue: serialize() must return a string or NULL';
      };
 
     (function() { // DON'T EDIT BELOW THIS LINE
